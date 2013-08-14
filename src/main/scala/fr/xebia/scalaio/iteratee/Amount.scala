@@ -9,6 +9,8 @@ case class Amount(value: Double, currency: Currency) {
 
   def -(other: Amount) = copy(value = value - other.value)
 
+  def +(other: Amount) = copy(value = value + other.value)
+
   def /(divisor: Double) = copy(value = value / divisor)
 
   override def toString = s"$value, $currency"
