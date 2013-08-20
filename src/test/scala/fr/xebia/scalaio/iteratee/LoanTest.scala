@@ -7,7 +7,7 @@ import fr.xebia.scalaio.matchers.TableMatchers
 import Assertions._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import RowTransformer.totalPaid
+import RowTransformer.{interests, until, totalPaid}
 import AmountConsumer.sum
 
 class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers {
@@ -26,7 +26,7 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
     ).rows
 
     Await.result(rows run RowConsumer.list, atMost = defaultTimeout) should matchTable(
-      (date, amortization, interests, outstanding),
+      (date, amortization, Assertions.interests, outstanding),
       ("2013-01-01", 200 EUR, 50 EUR, 800 EUR),
       ("2014-01-01", 200 EUR, 40 EUR, 600 EUR),
       ("2015-01-01", 200 EUR, 30 EUR, 400 EUR),
@@ -70,5 +70,27 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
       portfolio.rows &> totalPaid |>>> sum
 
     Await.result(totalPaidComputation, atMost = defaultTimeout) should equal(3480 EUR)
+  }
+
+  test("sum all interests until 2015-03-01 of a portfolio") {
+    println("----------")
+    val portfolio = Portfolio(Seq
+      (Loan.simple(
+        start = "2012-01-01",
+        initial = 1000 EUR,
+        duration = 5,
+        fixedRate = 0.05
+      ), Loan.simple(
+        start = "2013-01-02",
+        initial = 2000 EUR,
+        duration = 10,
+        fixedRate = 0.03
+      ))
+    )
+
+    val totalPaidComputation: Future[Amount] =
+      portfolio.rows &> until("2015-03-01") &> interests |>>> sum
+
+    Await.result(totalPaidComputation, atMost = defaultTimeout) should equal(234 EUR)
   }
 }
