@@ -5,8 +5,16 @@ import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
 import fr.xebia.scalaio.matchers.TableMatchers
 import Assertions._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
+import RowTransformer.totalPaid
+import AmountConsumer.sum
 
 class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers {
+
+  private val defaultTimeout = 1 second
+
+  import ExecutionContext.Implicits.global
 
   test("A simple loan test") {
 
@@ -17,7 +25,7 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
       fixedRate = 0.05
     ).rows
 
-    rows should matchTable(
+    Await.result(rows run RowConsumer.list, atMost = defaultTimeout) should matchTable(
       (date, amortization, interests, outstanding),
       ("2013-01-01", 200 EUR, 50 EUR, 800 EUR),
       ("2014-01-01", 200 EUR, 40 EUR, 600 EUR),
@@ -35,30 +43,31 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
       fixedRate = 0.05
     ).rows
 
-    val totalPaid = rows
-      .map(row => row.interests + row.amortization)
-      .foldLeft(0 EUR)(_ + _)
+    val totalPaidComputation: Future[Amount] = rows
+      .through(totalPaid)
+      .run(sum)
 
-    totalPaid should equal(1150 EUR)
+    Await.result(totalPaidComputation, atMost = defaultTimeout) should equal(1150 EUR)
   }
 
   test("sum all amounts of a portfolio") {
-    val portfolio = Portfolio(Loan.simple(
-      start = "2012-01-01",
-      initial = 1000 EUR,
-      duration = 5,
-      fixedRate = 0.05
-    ), Loan.simple(
-      start = "2013-01-02",
-      initial = 2000 EUR,
-      duration = 10,
-      fixedRate = 0.03
-    ))
+    val portfolio = Portfolio(Seq
+      (Loan.simple(
+        start = "2012-01-01",
+        initial = 1000 EUR,
+        duration = 5,
+        fixedRate = 0.05
+      ), Loan.simple(
+        start = "2013-01-02",
+        initial = 2000 EUR,
+        duration = 10,
+        fixedRate = 0.03
+      ))
+    )
 
-    val totalPaid = portfolio.rows
-      .map(row => row.interests + row.amortization)
-      .foldLeft(0 EUR)(_ + _)
+    val totalPaidComputation: Future[Amount] =
+      portfolio.rows &> totalPaid |>>> sum
 
-    totalPaid should equal(3480 EUR)
+    Await.result(totalPaidComputation, atMost = defaultTimeout) should equal(3480 EUR)
   }
 }

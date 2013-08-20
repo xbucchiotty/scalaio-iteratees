@@ -1,10 +1,16 @@
 package fr.xebia.scalaio.iteratee
 
-case class Portfolio(loans: Iterable[Loan]) {
+import play.api.libs.iteratee.Enumerator
+import scala.concurrent.ExecutionContext
 
-  def rows: Iterable[Row] = loans flatMap (_.rows)
-}
+case class Portfolio(loans: Seq[Loan]) {
 
-object Portfolio {
-  def apply(loans: Loan*): Portfolio = new Portfolio(loans)
+  def rows(implicit ctx: ExecutionContext): RowProducer = {
+    //val split = loans.toStream.map(_.rows).grouped(loans.size / 4)
+
+    //split.map(_.foldLeft(Enumerator.empty[Row])(_ andThen _)).foldLeft(Enumerator.empty[Row])(Enumerator.interleave(_, _))
+
+    loans.map(_.rows).foldLeft(Enumerator.empty[Row])(_ >>> _)
+
+  }
 }

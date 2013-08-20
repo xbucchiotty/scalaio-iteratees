@@ -1,10 +1,20 @@
 package fr.xebia.scalaio.iteratee
 
+import AmountConsumer.sum
+import RowTransformer.totalPaid
+import java.util.Currency
+import org.joda.time.DateMidnight
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
+
 
 object Master extends App {
 
-  import java.util.Currency
-  import org.joda.time.DateMidnight
+  private val defaultTimeout = 1000 second
+
+  implicit val executionContext: ExecutionContext = {
+    ExecutionContext.Implicits.global
+  }
 
   val simpleLoans =
     for (i <- (0 to 5000).toSeq)
@@ -34,18 +44,12 @@ object Master extends App {
 
   val complexPortfolio = Portfolio(complexLoans)
 
-  val start = System.currentTimeMillis()
-
   LogTime("simple ") {
-    simplePortfolio.rows.toStream
-      .map(row => row.interests + row.amortization)
-      .foldLeft(Amount(0, Currency.getInstance("EUR")))(_ + _)
+    Await.result(simplePortfolio.rows &> totalPaid |>>> sum, atMost = defaultTimeout)
   }
 
   LogTime("complex") {
-    complexPortfolio.rows.toStream
-      .map(row => row.interests + row.amortization)
-      .foldLeft(Amount(0, Currency.getInstance("EUR")))(_ + _)
+    Await.result(complexPortfolio.rows &> totalPaid |>>> sum, atMost = defaultTimeout)
   }
 
 }

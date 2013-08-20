@@ -4,3 +4,5 @@ initialize ~= {
   _ =>
     System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
 }
+
+addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.5.1")

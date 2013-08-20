@@ -1,14 +1,16 @@
 package fr.xebia.scalaio.iteratee
 
-import org.joda.time.DateMidnight
 import fr.xebia.scalaio.implicits._
+import org.joda.time.DateMidnight
+import play.api.libs.iteratee.Enumerator
+import scala.concurrent.{Future, ExecutionContext}
 
 case class Loan(
                  initial: Amount,
                  duration: Int,
                  rowIt: RowIt) {
 
-  def rows: Seq[Row] = Stream.iterate(rowIt.first)(rowIt.op) take duration
+  def rows(implicit ctx: ExecutionContext): RowProducer = Enumerator.flatten(Future(Stream.iterate(rowIt.first)(rowIt.op) take duration toList).map(Enumerator.enumerate(_)))
 
 }
 
@@ -24,24 +26,24 @@ object Loan {
       duration,
       RowIt(first = new Row {
 
-        def date = start + (1 year)
+        lazy val date = start + (1 year)
 
-        def interests = initial * fixedRate
+        lazy val interests = initial * fixedRate
 
-        def amortization = initial / duration
+        lazy val amortization = initial / duration
 
-        def outstanding = initial - amortization
+        lazy val outstanding = initial - amortization
 
       },
         op = (last: Row) => new Row {
 
-          def date = last.date + (1 year)
+          lazy val date = last.date + (1 year)
 
-          def interests = last.outstanding * fixedRate
+          lazy val interests = last.outstanding * fixedRate
 
-          def amortization = last amortization
+          lazy val amortization = last amortization
 
-          def outstanding = last.outstanding - amortization
+          lazy val outstanding = last.outstanding - amortization
 
         })
     )
