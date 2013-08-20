@@ -40,7 +40,7 @@ object Loan {
       },
         op = (last: Row) => new Row {
 
-          val date = last.date + (1 year)
+          def date = last.date + (1 year)
 
           val interests = last.outstanding * fixedRate
 

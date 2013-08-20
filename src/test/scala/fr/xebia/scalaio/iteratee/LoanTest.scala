@@ -51,6 +51,7 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
   }
 
   test("sum all amounts of a portfolio") {
+    println("----------")
     val portfolio = Portfolio(Seq
       (Loan.simple(
         start = "2012-01-01",
