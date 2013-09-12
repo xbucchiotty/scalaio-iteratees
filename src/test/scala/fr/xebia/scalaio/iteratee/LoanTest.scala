@@ -1,22 +1,41 @@
 package fr.xebia.scalaio.iteratee
 
-import fr.xebia.scalaio.Implicits
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
-import fr.xebia.scalaio.matchers.TableMatchers
-import Assertions._
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration._
-import RowTransformer.{interests, until, totalPaid}
-import RowConsumer.{last, list}
 import AmountConsumer.sum
+import Assertions._
+import RowConsumer.{last, list}
+import RowTransformer.{interests, until, totalPaid}
+import akka.actor.{ActorRef, Props, ActorSystem}
+import akka.routing.RoundRobinRouter
+import fr.xebia.scalaio.Implicits
+import fr.xebia.scalaio.akka.Backend
+import fr.xebia.scalaio.matchers.TableMatchers
 import org.joda.time.DateMidnight
+import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
-class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers {
+class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers with BeforeAndAfterAll {
 
   private val defaultTimeout = 1 second
 
-  import ExecutionContext.Implicits.global
+  var system: ActorSystem = _
+  implicit var calculator: ActorRef = _
+  implicit var ctx: ExecutionContext = _
+
+  override protected def beforeAll() {
+    system = ActorSystem.create("ScalaIOSystem")
+
+    ctx = ExecutionContext.Implicits.global
+
+    calculator = system.actorOf(Props[Backend]
+      .withRouter(RoundRobinRouter(nrOfInstances = 10)),
+      "calculator")
+  }
+
+  override protected def afterAll() {
+    system.shutdown()
+  }
 
   test("A simple loan test") {
 
@@ -112,4 +131,5 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
     lastRow should be('defined)
     lastRow map (_.date should equal(DateMidnight.parse("2017-01-01")))
   }
+
 }

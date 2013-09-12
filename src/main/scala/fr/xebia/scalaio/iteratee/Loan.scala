@@ -1,17 +1,28 @@
 package fr.xebia.scalaio.iteratee
 
+import akka.actor.ActorRef
+import akka.pattern.ask
+import akka.util.Timeout
+import concurrent.duration._
+import fr.xebia.scalaio.akka.Compute
 import fr.xebia.scalaio.implicits._
-import org.joda.time.DateMidnight
 import play.api.libs.iteratee.Enumerator
 import scala.concurrent.ExecutionContext
+import org.joda.time.DateMidnight
 
 case class Loan(
                  initial: Amount,
                  duration: Int,
                  rowIt: RowIt) {
 
-  def rows(implicit ctx: ExecutionContext): RowProducer =
-    Enumerator.enumerate(stream)
+  implicit lazy val timeout = Timeout(1 minute)
+
+  def rows(implicit calculator: ActorRef, ctx: ExecutionContext): RowProducer = {
+    Enumerator.flatten(
+      ask(calculator, Compute(this)).mapTo[List[Row]]
+        .map(Enumerator.enumerate(_))
+    )
+  }
 
   def stream =
     Stream.iterate(rowIt.first)(rowIt.op) take duration

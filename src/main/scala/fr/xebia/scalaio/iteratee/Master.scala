@@ -2,6 +2,9 @@ package fr.xebia.scalaio.iteratee
 
 import AmountConsumer.sum
 import RowTransformer.totalPaid
+import akka.actor.{Props, ActorSystem}
+import akka.routing.RoundRobinRouter
+import fr.xebia.scalaio.akka.Backend
 import java.util.Currency
 import org.joda.time.DateMidnight
 import scala.concurrent.duration._
@@ -12,9 +15,13 @@ object Master extends App {
 
   private val defaultTimeout = 1000 second
 
-  implicit val executionContext: ExecutionContext = {
-    ExecutionContext.Implicits.global
-  }
+  val system = ActorSystem.create("ScalaIOSystem")
+
+  implicit val ctx = ExecutionContext.Implicits.global
+
+  implicit val calculator = system.actorOf(Props[Backend]
+    .withRouter(RoundRobinRouter(nrOfInstances = 10)),
+    "calculator")
 
   val simpleLoans =
     for (i <- (0 to 5000).toSeq)
@@ -51,6 +58,8 @@ object Master extends App {
   LogTime("complex") {
     Await.result(complexPortfolio.rows &> totalPaid |>>> sum, atMost = defaultTimeout)
   }
+
+  system.shutdown()
 
 }
 
