@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext
 
 case class Portfolio(loans: Seq[Loan]) {
 
-  implicit lazy val timeout = Timeout(1 minute)
+  implicit lazy val timeout = Timeout(1000 second)
 
   def rows(implicit calculator: ActorRef, ctx: ExecutionContext): RowProducer = {
     val split =
@@ -29,5 +29,5 @@ case class Portfolio(loans: Seq[Loan]) {
     }).foldLeft(Enumerator.empty[Row])(Enumerator.interleave(_, _))
   }
 
-  private def groupSize:Int = if(loans.size>=4) loans.size / 4 else loans.size
+  private def groupSize: Int = if (loans.size >= 4) loans.size / 4 else loans.size
 }

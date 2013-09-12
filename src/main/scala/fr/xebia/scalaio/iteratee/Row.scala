@@ -2,7 +2,7 @@ package fr.xebia.scalaio.iteratee
 
 import org.joda.time.DateMidnight
 
-trait Row {
+trait Row extends Serializable{
 
   def date: DateMidnight
 

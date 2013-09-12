@@ -2,13 +2,17 @@ package fr.xebia.scalaio.iteratee
 
 import AmountConsumer.sum
 import RowTransformer.totalPaid
-import akka.actor.{Props, ActorSystem}
-import akka.routing.RoundRobinRouter
-import fr.xebia.scalaio.akka.Backend
+import akka.actor.SupervisorStrategy.{Escalate, Resume}
+import akka.actor.{Props, OneForOneStrategy, ActorSystem}
+import akka.cluster.Cluster
+import akka.pattern.AskTimeoutException
 import java.util.Currency
 import org.joda.time.DateMidnight
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import akka.cluster.routing.{ClusterRouterSettings, ClusterRouterConfig}
+import fr.xebia.scalaio.akka.Backend
+import akka.routing.RoundRobinRouter
 
 
 object Master extends App {
@@ -17,11 +21,34 @@ object Master extends App {
 
   val system = ActorSystem.create("ScalaIOSystem")
 
-  implicit val ctx = ExecutionContext.Implicits.global
+  Cluster(system).publishCurrentClusterState()
+
+  Thread.sleep(5000)
+
+  implicit val ctx = system.dispatcher
+
+  val simpleStrategy =
+    OneForOneStrategy() {
+      case _: AskTimeoutException ⇒ Resume
+      case _: RuntimeException => Escalate
+    }
+
+  val clusterSettings = ClusterRouterSettings(
+    totalInstances = 100,
+    maxInstancesPerNode = 2,
+    allowLocalRoutees = false,
+    None)
+
+  val localRouter =
+    RoundRobinRouter(nrOfInstances = 100)
+      .withSupervisorStrategy(simpleStrategy)
 
   implicit val calculator = system.actorOf(Props[Backend]
-    .withRouter(RoundRobinRouter(nrOfInstances = 10)),
-    "calculator")
+    .withRouter(ClusterRouterConfig(
+    local = localRouter,
+    settings = clusterSettings))
+    , "calculator")
+
 
   val simpleLoans =
     for (i <- (0 to 5000).toSeq)

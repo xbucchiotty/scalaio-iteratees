@@ -16,6 +16,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import akka.actor.SupervisorStrategy.{Escalate, Restart, Resume, Stop}
 import akka.pattern.AskTimeoutException
+import akka.cluster.routing.{ClusterRouterConfig, ClusterRouterSettings}
+import akka.cluster.Cluster
 
 class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers with BeforeAndAfterAll {
 
@@ -28,6 +30,8 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
   override protected def beforeAll() {
     system = ActorSystem.create("ScalaIOSystem")
 
+    Cluster(system).publishCurrentClusterState()
+
     ctx = ExecutionContext.Implicits.global
 
     val simpleStrategy =
@@ -36,10 +40,21 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
         case _: RuntimeException => Escalate
       }
 
+    val clusterSettings = ClusterRouterSettings(
+      totalInstances = 100,
+      maxInstancesPerNode = 2,
+      allowLocalRoutees = true,
+      None)
+
+    val localRouter =
+      RoundRobinRouter(nrOfInstances = 100)
+        .withSupervisorStrategy(simpleStrategy)
+
     calculator = system.actorOf(Props[Backend]
-      .withRouter(RoundRobinRouter(nrOfInstances = 10)
-      .withSupervisorStrategy(simpleStrategy)),
-      "calculator")
+      .withRouter(ClusterRouterConfig(
+      local = localRouter,
+      settings = clusterSettings))
+      , "calculator")
   }
 
   override protected def afterAll() {

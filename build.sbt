@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "joda-time" % "joda-time" % "2.2",
   "org.joda" % "joda-money" % "0.9",
   "com.typesafe.play" %% "play-iteratees" % "2.2.0-RC2",
-  "com.typesafe.akka" %% "akka-actor" % "2.2.1"
+  "com.typesafe.akka" %% "akka-cluster" % "2.2.1"
 )
 
 fork in run := true
