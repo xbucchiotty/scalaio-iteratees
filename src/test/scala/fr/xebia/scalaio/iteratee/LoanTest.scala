@@ -4,7 +4,7 @@ import AmountConsumer.sum
 import Assertions._
 import RowConsumer.{last, list}
 import RowTransformer.{interests, until, totalPaid}
-import akka.actor.{ActorRef, Props, ActorSystem}
+import akka.actor.{OneForOneStrategy, ActorRef, Props, ActorSystem}
 import akka.routing.RoundRobinRouter
 import fr.xebia.scalaio.Implicits
 import fr.xebia.scalaio.akka.Backend
@@ -14,6 +14,8 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+import akka.actor.SupervisorStrategy.{Escalate, Restart, Resume, Stop}
+import akka.pattern.AskTimeoutException
 
 class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMatchers with BeforeAndAfterAll {
 
@@ -28,8 +30,15 @@ class LoanTest extends FunSuite with ShouldMatchers with Implicits with TableMat
 
     ctx = ExecutionContext.Implicits.global
 
+    val simpleStrategy =
+      OneForOneStrategy() {
+        case _: AskTimeoutException ⇒ Resume
+        case _: RuntimeException => Escalate
+      }
+
     calculator = system.actorOf(Props[Backend]
-      .withRouter(RoundRobinRouter(nrOfInstances = 10)),
+      .withRouter(RoundRobinRouter(nrOfInstances = 10)
+      .withSupervisorStrategy(simpleStrategy)),
       "calculator")
   }
 
