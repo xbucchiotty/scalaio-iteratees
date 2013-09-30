@@ -12,3 +12,7 @@ libraryDependencies ++= Seq(
   "org.joda" % "joda-money" % "0.9",
   "play" %% "play-iteratees" % "2.1.0"
 )
+
+fork in run := true
+
+javaOptions in run += "-Xmx2G"
