@@ -3,15 +3,18 @@ package fr.xebia.scalaio.iteratee
 import fr.xebia.scalaio.implicits._
 import org.joda.time.DateMidnight
 import play.api.libs.iteratee.Enumerator
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.ExecutionContext
 
 case class Loan(
                  initial: Amount,
                  duration: Int,
                  rowIt: RowIt) {
 
-  def rows(implicit ctx: ExecutionContext): RowProducer = Enumerator.flatten(Future(Stream.iterate(rowIt.first)(rowIt.op) take duration toList).map(Enumerator.enumerate(_)))
+  def rows(implicit ctx: ExecutionContext): RowProducer =
+    Enumerator.enumerate(stream)
 
+  def stream =
+    Stream.iterate(rowIt.first)(rowIt.op) take duration
 }
 
 object Loan {
@@ -26,24 +29,24 @@ object Loan {
       duration,
       RowIt(first = new Row {
 
-        lazy val date = start + (1 year)
+        val date = start + (1 year)
 
-        lazy val interests = initial * fixedRate
+        val interests = initial * fixedRate
 
-        lazy val amortization = initial / duration
+        val amortization = initial / duration
 
-        lazy val outstanding = initial - amortization
+        val outstanding = initial - amortization
 
       },
         op = (last: Row) => new Row {
 
-          lazy val date = last.date + (1 year)
+          val date = last.date + (1 year)
 
-          lazy val interests = last.outstanding * fixedRate
+          val interests = last.outstanding * fixedRate
 
-          lazy val amortization = last amortization
+          val amortization = last amortization
 
-          lazy val outstanding = last.outstanding - amortization
+          val outstanding = last.outstanding - amortization
 
         })
     )
@@ -62,27 +65,27 @@ object Loan {
       duration,
       RowIt(first = new Row {
 
-        lazy val date = start + (1 year)
+        val date = start + (1 year)
 
-        lazy val interests = initial * fixedRate
+        val interests = initial * fixedRate
 
-        lazy val amortization = initial / duration
+        val amortization = initial / duration
 
-        lazy val outstanding = initial - amortization
+        val outstanding = initial - amortization
 
       },
         op = (last: Row) => new Row {
 
-          lazy val date = last.date + (1 year)
+          val date = last.date + (1 year)
 
-          lazy val interests = {
+          val interests = {
             Thread.sleep(sleepTime)
             last.outstanding * fixedRate
           }
 
-          lazy val amortization = last amortization
+          val amortization = last amortization
 
-          lazy val outstanding = last.outstanding - amortization
+          val outstanding = last.outstanding - amortization
 
         })
     )
