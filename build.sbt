@@ -1,4 +1,4 @@
-name := "scalaio-iteratee"
+
 
 version := "1.0.0"
 
@@ -9,8 +9,7 @@ libraryDependencies ++= Seq(
   "joda-time" % "joda-time" % "2.2",
   "org.joda" % "joda-convert" % "1.2",
   "joda-time" % "joda-time" % "2.2",
-  "org.joda" % "joda-money" % "0.9",
-  "play" %% "play-iteratees" % "2.1.0"
+  "org.joda" % "joda-money" % "0.9"
 )
 
 fork in run := true
